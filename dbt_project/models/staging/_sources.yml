@@ -1,0 +1,11 @@
+version: 2
+
+sources:
+  - name: bronze
+    description: >
+      Bronze Parquet written by `make bronze`, exposed as a view by the on-run-start hook in
+      dbt_project.yml. Every column is a string; empty cells are '' (not NULL).
+    schema: bronze
+    tables:
+      - name: fd_matches_raw
+        description: football-data.co.uk Bundesliga (D1), one row per match, all seasons.

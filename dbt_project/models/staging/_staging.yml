@@ -1,0 +1,24 @@
+version: 2
+
+models:
+  - name: stg_fd_matches
+    description: Bronze matches with proper types and snake_case names. No rows are removed.
+    columns:
+      - name: season
+        data_tests: [not_null]
+      - name: match_date
+        description: NULL means the Date string could not be parsed.
+        data_tests: [not_null]
+      - name: home_team_name
+        data_tests: [not_null]
+      - name: away_team_name
+        data_tests: [not_null]
+      - name: home_goals
+        data_tests: [not_null]
+      - name: away_goals
+        data_tests: [not_null]
+      - name: result
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ["H", "D", "A"]

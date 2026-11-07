@@ -1,0 +1,37 @@
+name: sportslakehouse
+version: "0.1.0"
+config-version: 2
+profile: sportslakehouse
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+# All paths are relative to this folder (we always run dbt from dbt_project/, see the Makefile).
+vars:
+  bronze_glob: "../data/lake/bronze/football_data/season=*/D1.parquet"
+  lake_dir: "../data/lake"
+  # Expected shape of a COMPLETED Bundesliga season. CI fixtures override these.
+  matches_per_completed_season: 306
+  games_per_team_per_completed_season: 34
+
+# Runs at the start of every dbt invocation: expose the Bronze Parquet files as a view,
+# so dbt can treat them as a normal source (and show them in the lineage graph).
+on-run-start:
+  - "create schema if not exists bronze"
+  - "create or replace view bronze.fd_matches_raw as select * from read_parquet('{{ var('bronze_glob') }}', union_by_name = true, hive_partitioning = false)"
+
+models:
+  sportslakehouse:
+    staging:
+      +materialized: view
+      +schema: staging
+    silver:
+      +schema: silver
+
+seeds:
+  sportslakehouse:
+    +schema: silver

@@ -49,3 +49,19 @@ class Settings:
     @property
     def column_inventory_path(self) -> Path:
         return self.bronze_meta_dir / "column_inventory.parquet"
+
+    @property
+    def lake_dir(self) -> Path:
+        return self.data_dir / "lake"
+
+    @property
+    def silver_dir(self) -> Path:
+        return self.lake_dir / "silver"
+
+    @property
+    def gold_dir(self) -> Path:
+        return self.lake_dir / "gold"
+
+    @property
+    def bronze_glob(self) -> str:
+        return str(self.bronze_dir / "season=*" / f"{self.league}.parquet")

@@ -1,0 +1,9 @@
+# Committed on purpose: it contains no secrets (a local DuckDB file only).
+sportslakehouse:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: ../data/warehouse.duckdb   # relative to dbt_project/; data/ is not in git
+      schema: main
+      threads: 1                       # tiny data; one thread keeps runs deterministic

@@ -1,0 +1,16 @@
+version: 2
+
+seeds:
+  - name: team_name_map
+    description: >
+      Maps each team name as spelled by a source to one canonical team_id.
+      The pair (source, source_name) is unique (checked by a singular test).
+    columns:
+      - name: source
+        data_tests: [not_null]
+      - name: source_name
+        data_tests: [not_null]
+      - name: team_id
+        data_tests: [not_null]
+      - name: team_name
+        data_tests: [not_null]

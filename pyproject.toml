@@ -13,6 +13,9 @@ dependencies = [
     "pyarrow>=14",
     "duckdb>=1.0",
     "requests>=2.31",
+    "dbt-core>=1.9,<2",
+    "dbt-duckdb>=1.9,<2",
+    "pandera>=0.24",
 ]
 
 [project.optional-dependencies]

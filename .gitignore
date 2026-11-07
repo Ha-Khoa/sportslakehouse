@@ -16,3 +16,15 @@ __pycache__/
 mlruns/
 .dagster/
 .DS_Store
+
+# dbt
+dbt_project/target/
+dbt_project/logs/
+dbt_project/dbt_packages/
+logs/
+
+# personal notes
+docs/journal/
+
+# macOS
+__MACOSX/
