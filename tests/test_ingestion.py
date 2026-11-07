@@ -1,7 +1,6 @@
 import json
 from pathlib import Path
 
-import pandas as pd
 import pytest
 
 from sportslakehouse.config import Settings
@@ -20,10 +19,16 @@ RAW_OLD = (
 ).encode("latin-1")
 
 RAW_NEW = (
-    "Div,Date,HomeTeam,AwayTeam,FTHG,FTAG,FTR,HS,AS,B365H,B365D,B365A\n"
-    "D1,23/08/2024,Leverkusen,M'gladbach,3,2,H,15,9,1.3,5.5,9.0\n"
-    "D1,24/08/2024,Dortmund,Heidenheim,2,1,H,12,6,,,\n"
-).encode()
+    b"Div,Date,HomeTeam,AwayTeam,FTHG,FTAG,FTR,HS,AS,B365H,B365D,B365A\n"
+    b"D1,23/08/2024,Leverkusen,M'gladbach,3,2,H,15,9,1.3,5.5,9.0\n"
+    b"D1,24/08/2024,Dortmund,Heidenheim,2,1,H,12,6,,,\n"
+)
+
+RAW_RAGGED = (
+    b"Div,Date,HomeTeam,AwayTeam,FTHG,FTAG,FTR\n"
+    b"D1,01/08/03,A,B,1,0,H\n"
+    b"D1,02/08/03,C,D,0,0,D,,,,,,\n"
+)
 
 
 def make_settings(tmp_path: Path) -> Settings:
@@ -126,3 +131,24 @@ def test_inventory_detects_schema_drift():
     assert first_season_with(inv, "B365H", min_filled=0.5) == "2024-25"
     assert first_season_with(inv, "B365H", min_filled=0.9) is None
     assert first_season_with(inv, "NOPE") is None
+
+
+def test_ragged_rows_are_not_dropped():
+    df = fd.clean_raw_csv(RAW_RAGGED)
+    assert len(df) == 2
+
+
+# def test_bronze_rows_equal_raw_rows(frames):
+#     s = Settings()
+#     for season, df in frames.items():
+#         path = s.raw_cache_dir / season / f"{s.league}.csv"
+#         if not path.exists():
+#             continue
+#         raw = path.read_bytes()
+#         try:
+#             text = raw.decode("utf-8-sig")
+#         except UnicodeDecodeError:
+#             text = raw.decode("latin-1")
+#         rows = list(csv.reader(io.StringIO(text)))[1:]
+#         n_raw = sum(1 for r in rows if any(v.strip() for v in r))
+#         assert len(df) == n_raw, f"{season}: bronze {len(df)} vs raw {n_raw}"

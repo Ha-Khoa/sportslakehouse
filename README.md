@@ -33,5 +33,6 @@ make test-data     # data tests against the real Bronze layer
 Match results and odds come from [football-data.co.uk](https://football-data.co.uk). Read their
 `notes.txt` and terms before publishing anything derived from it. The raw data is not stored in
 this repository; `make bronze` downloads it.
+https://football-data.co.uk/notes.txt 
 
 This project is for educational and analytical purposes only and does not provide betting advice.

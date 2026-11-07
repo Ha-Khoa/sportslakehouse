@@ -15,12 +15,13 @@ from datetime import datetime, timezone
 
 from sportslakehouse.config import Settings
 from sportslakehouse.ingestion.football_data import (
+    CLEAN_VERSION,
     add_audit_columns,
     append_ingestion_log,
     bronze_partition_path,
     clean_raw_csv,
     download_season,
-    last_logged_hash,
+    last_logged_record,
     write_bronze,
 )
 from sportslakehouse.ingestion.inventory import write_inventory
@@ -30,12 +31,23 @@ from sportslakehouse.seasons import parse_season, season_label, season_range
 def ingest_season(start_year: int, settings: Settings, *, force: bool = False) -> dict:
     label = season_label(start_year)
     dl = download_season(start_year, settings, force=force)
-    previous_hash = last_logged_hash(label, settings)
+    # previous_hash = last_logged_hash(label, settings)
+    previous = last_logged_record(label, settings)
     partition_exists = bronze_partition_path(label, settings).exists()
 
-    if dl.sha256 == previous_hash and partition_exists:
+    same = bool(
+        previous
+        and previous.get("file_hash") == dl.sha256
+        and previous.get("parser_version") == CLEAN_VERSION
+    )
+
+    if same and partition_exists:
         status = "unchanged"
         rows_read = rows_written = 0
+
+    # if dl.sha256 == previous_hash and partition_exists:
+    #     status = "unchanged"
+    #     rows_read = rows_written = 0
     else:
         df = clean_raw_csv(dl.path.read_bytes())
         rows_read = len(df)
@@ -49,12 +61,14 @@ def ingest_season(start_year: int, settings: Settings, *, force: bool = False) -
         )
         write_bronze(df, label, settings)
         rows_written = len(df)
-        status = "new" if previous_hash is None else "updated"
+        # status = "new" if previous_hash is None else "updated"
+        status = "new" if previous is None else "updated"
 
     record = {
         "season": label,
         "status": status,
         "file_hash": dl.sha256,
+        "parser_version": CLEAN_VERSION,
         "from_cache": dl.from_cache,
         "rows_read": rows_read,
         "rows_written": rows_written,
@@ -66,8 +80,12 @@ def ingest_season(start_year: int, settings: Settings, *, force: bool = False) -
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument("--seasons", default="all", help="'all' or comma list, e.g. 2023-24,2024-25")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawTextHelpFormatter
+    )
+    parser.add_argument(
+        "--seasons", default="all", help="'all' or comma list, e.g. 2023-24,2024-25"
+    )
     parser.add_argument("--force", action="store_true", help="ignore cached CSV files")
     args = parser.parse_args(argv)
 
@@ -90,10 +108,14 @@ def main(argv: list[str] | None = None) -> int:
                 time.sleep(settings.polite_delay_s)  # be polite to the free data provider
         except Exception as exc:  # noqa: BLE001 - report and continue with the next season
             failures += 1
-            print(f"{season_label(start):<9} FAILED     {type(exc).__name__}: {exc}", file=sys.stderr)
+            print(
+                f"{season_label(start):<9} FAILED     {type(exc).__name__}: {exc}", file=sys.stderr
+            )
 
     inv = write_inventory(settings)
-    print(f"\ncolumn inventory: {inv['season'].nunique()} seasons, {inv['column'].nunique()} columns")
+    print(
+        f"\ncolumn inventory: {inv['season'].nunique()} seasons, {inv['column'].nunique()} columns"
+    )
     return 1 if failures else 0
 
 

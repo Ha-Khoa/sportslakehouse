@@ -9,6 +9,7 @@ Bronze rules (see design doc, section 5.3 and 7):
 
 from __future__ import annotations
 
+import csv
 import hashlib
 import io
 import json
@@ -22,6 +23,8 @@ import pandas as pd
 
 from sportslakehouse.config import REQUIRED_COLUMNS, Settings
 from sportslakehouse.seasons import fd_code, is_completed, season_label
+
+CLEAN_VERSION = "2"
 
 
 class SchemaError(ValueError):
@@ -133,20 +136,40 @@ def clean_raw_csv(raw: bytes) -> pd.DataFrame:
     completely empty rows. Real cleaning (types, team names) belongs to Silver.
     """
     text = _decode(raw)
-    df = pd.read_csv(
-        io.StringIO(text),
-        dtype=str,
-        keep_default_na=False,
-        na_filter=False,
-        index_col=False,  # old files have trailing commas; avoid shifting columns
-        on_bad_lines="warn",
-        skipinitialspace=True,
-    )
-    df.columns = [str(c).strip() for c in df.columns]
-    keep = [c for c in df.columns if c and not c.startswith("Unnamed")]
-    df = df[keep]
-    df = df.apply(lambda col: col.str.strip())
-    df = df[(df != "").any(axis=1)].reset_index(drop=True)
+    rows = list(csv.reader(io.StringIO(text)))
+    if not rows:
+        raise SchemaError("Empty file")
+    header = [c.strip() for c in rows[0]]
+    while header and not header[-1]:  # trailing unnamed columns
+        header.pop()
+    n = len(header)
+
+    body = []
+    for lineno, row in enumerate(rows[1:], start=2):
+        extra = [v for v in row[n:] if v.strip()]
+        if extra:  # never drop real data silently
+            raise SchemaError(f"line: {lineno} data beyond named columns: {extra[:3]}")
+        padded = (row + [""] * n)[:n]
+        if any(v.strip() for v in padded):  # skip completely empty rows
+            body.append([v.strip() for v in padded])
+
+    df = pd.DataFrame(body, columns=header, dtype=str)
+    df = df[[c for c in df.columns if c and not c.startswith("Unnamed")]]
+
+    # df = pd.read_csv(
+    #     io.StringIO(text),
+    #     dtype=str,
+    #     keep_default_na=False,
+    #     na_filter=False,
+    #     index_col=False,  # old files have trailing commas; avoid shifting columns
+    #     on_bad_lines="warn",
+    #     skipinitialspace=True,
+    # )
+    # df.columns = [str(c).strip() for c in df.columns]
+    # keep = [c for c in df.columns if c and not c.startswith("Unnamed")]
+    # df = df[keep]
+    # df = df.apply(lambda col: col.str.strip())
+    # df = df[(df != "").any(axis=1)].reset_index(drop=True)
 
     missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
     if missing:
@@ -210,3 +233,15 @@ def append_ingestion_log(record: dict[str, Any], settings: Settings) -> None:
     settings.bronze_meta_dir.mkdir(parents=True, exist_ok=True)
     with settings.ingestion_log_path.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+
+def last_logged_record(season, settings):
+    log = settings.ingestion_log_path
+    last = None
+    if log.exists():
+        for line in log.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                rec = json.loads(line)
+                if rec.get("season") == season:
+                    last = rec
+    return last
