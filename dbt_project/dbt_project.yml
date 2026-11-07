@@ -31,6 +31,8 @@ models:
       +schema: staging
     silver:
       +schema: silver
+    gold:
+      +schema: gold
 
 seeds:
   sportslakehouse:

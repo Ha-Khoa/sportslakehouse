@@ -1,0 +1,51 @@
+version: 2
+
+models:
+  - name: int_team_form
+    description: >
+      Rolling form of each team before each match (windows end at 1 PRECEDING).
+      Grain (match_id, team_id).
+    columns:
+      - name: match_id
+        data_tests: [not_null]
+      - name: team_id
+        data_tests: [not_null]
+      - name: n_prev_10
+        description: How many matches were really inside the 10-match window (0 to 10).
+        data_tests: [not_null]
+
+  - name: elo_ratings
+    description: >
+      Elo of each team BEFORE each match (python model, pure function features/elo.py).
+      Also copied to data/lake/gold/elo_ratings.parquet by the post-hook.
+    config:
+      post_hook: "copy {{ this }} to '{{ var('lake_dir') }}/gold/elo_ratings.parquet' (format parquet)"
+    columns:
+      - name: match_id
+        data_tests: [not_null]
+      - name: team_id
+        data_tests: [not_null]
+      - name: elo_pre
+        data_tests: [not_null]
+
+  - name: fct_match_features
+    description: >
+      One row per match for ML: home/away features known before kick-off, differences and
+      the labels (result, home_goals, away_goals).
+    columns:
+      - name: match_id
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              to: ref('silver_matches')
+              field: match_id
+      - name: result
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ["H", "D", "A"]
+      - name: h_elo
+        data_tests: [not_null]
+      - name: a_elo
+        data_tests: [not_null]
