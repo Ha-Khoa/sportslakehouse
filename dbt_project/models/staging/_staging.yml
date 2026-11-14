@@ -21,4 +21,5 @@ models:
         data_tests:
           - not_null
           - accepted_values:
-              values: ["H", "D", "A"]
+              arguments:
+                values: ["H", "D", "A"]

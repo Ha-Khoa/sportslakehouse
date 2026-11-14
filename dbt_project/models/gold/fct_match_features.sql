@@ -3,7 +3,7 @@
   label. Everything on the feature side is known BEFORE kick-off (see int_team_form and
   elo_ratings). The columns result, home_goals and away_goals are LABELS: never use them as
   model inputs (leakage test 4, week 3).
-  Not included yet: head-to-head features (next session).
+  Head-to-head (h2h_*) is from the home team's point of view.
 #}
 {{ config(
     materialized='external',
@@ -26,6 +26,12 @@ form as (
 elo as (
 
     select * from {{ ref('elo_ratings') }}
+
+),
+
+h2h as (
+
+    select * from {{ ref('int_h2h') }}
 
 )
 
@@ -81,6 +87,10 @@ select
     he.elo_pre - ae.elo_pre           as elo_diff,
     hf.rest_days - af.rest_days       as rest_days_diff,
 
+    -- head-to-head: points of the HOME team in its last (up to) 3 meetings with the away team
+    hh.h2h_ppg_last_3,
+    hh.h2h_n,
+
     -- season context
     hf.matchday_proxy                 as matchday_proxy,
     (hf.season_start_flag or af.season_start_flag) as season_start_flag,
@@ -94,4 +104,5 @@ inner join form hf on hf.match_id = m.match_id and hf.team_id = m.home_team_id
 inner join form af on af.match_id = m.match_id and af.team_id = m.away_team_id
 inner join elo  he on he.match_id = m.match_id and he.team_id = m.home_team_id
 inner join elo  ae on ae.match_id = m.match_id and ae.team_id = m.away_team_id
+inner join h2h  hh on hh.match_id = m.match_id and hh.team_id = m.home_team_id
 order by m.match_date, m.match_id

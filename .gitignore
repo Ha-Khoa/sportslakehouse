@@ -28,3 +28,5 @@ docs/journal/
 
 # macOS
 __MACOSX/
+dbt_project/.user.yml
+*.zip

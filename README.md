@@ -3,7 +3,8 @@
 Bundesliga data platform: medallion lakehouse (Parquet, DuckDB, dbt), match-outcome forecasting
 evaluated against bookmaker odds, MLOps, REST API and dashboard.
 
-> Status: **week 1** (Bronze layer and data profiling). The rest follows the design document.
+> Status: **week 2** (Silver and Gold layers with dbt, data-quality tests, Elo and rolling features).
+> The rest follows the design document.
 
 ## Quick start
 
@@ -15,6 +16,10 @@ make test          # unit tests, no network needed
 make bronze        # download 2000-01 ... current season, write Bronze Parquet
 make profile       # writes docs/data_profile.md
 make test-data     # data tests against the real Bronze layer
+make dbt           # dbt build: Silver + Gold (Parquet in data/lake/) and all dbt tests
+make validate      # Pandera checks on Bronze and Silver
+make quality-report  # docs/quality_report.md from the last dbt run
+make dbt-docs      # dbt docs with the lineage graph
 ```
 
 ## What week 1 does
@@ -27,6 +32,14 @@ make test-data     # data tests against the real Bronze layer
 | One Parquet partition per season, overwritten idempotently | `write_bronze` | `data/lake/bronze/football_data/season=YYYY-YY/` |
 | Which columns exist in which season | `ingestion/inventory.py` | `column_inventory.parquet` |
 | Data profile report | `profile.py` | `docs/data_profile.md` |
+
+## What week 2 adds
+
+| Layer | Models | Notes |
+|---|---|---|
+| Staging | `stg_fd_matches` | rename + cast only; Bronze stays all-string |
+| Silver | `matches`, `team_matches` (2 rows per match), `match_odds` (long), `teams`, `quarantine_matches` | row-level defects go to quarantine, structural defects stop the build |
+| Gold | `elo_ratings` (Python model), `fct_match_features`, `mart_standings`, `mart_team_form`, `mart_unbeaten_streaks`, `mart_home_away_by_season` | features use windows that end at `1 PRECEDING`; leakage tests in `tests/test_leakage.py` |
 
 ## Data
 

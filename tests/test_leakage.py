@@ -4,7 +4,8 @@ Run `make dbt` first. Marker `data`: they only run with `make test-data`.
 
 Test 1: recompute rolling form in plain Python from strictly earlier matches and compare it
         with the Gold table (a second, independent implementation).
-Test 2: add future matches and check that the features of past matches do not move.
+Test 2: add future matches and check that the features of past matches do not move
+        (for form AND head-to-head).
 """
 
 import math
@@ -21,7 +22,9 @@ from sportslakehouse.config import Settings
 pytestmark = pytest.mark.data
 
 ROOT = Path(__file__).resolve().parents[1]
-FORM_MODEL = ROOT / "dbt_project" / "models" / "gold" / "int_team_form.sql"
+GOLD_MODELS = ROOT / "dbt_project" / "models" / "gold"
+# every model that builds "before the match" features from silver_team_matches
+FEATURE_MODELS = ["int_team_form.sql", "int_h2h.sql"]
 
 
 @pytest.fixture(scope="module")
@@ -79,21 +82,40 @@ def test_ppg_10_matches_independent_python_recomputation(paths):
     assert checked == 800
 
 
+def test_h2h_matches_independent_python_recomputation(paths):
+    tm_path, fct_path = paths
+    tm = _read(tm_path)
+    fct = _read(fct_path)
+    pairs = {
+        key: g.sort_values(["match_date", "match_id"]).reset_index(drop=True)
+        for key, g in tm.groupby(["team_id", "opp_id"])
+    }
+    for row in fct.sample(n=400, random_state=7).itertuples(index=False):
+        g = pairs[(row.home_team_id, row.away_team_id)]
+        earlier = g[g["match_date"] < row.match_date].tail(3)  # home team's view, strictly before
+        assert row.h2h_n == len(earlier), (row.home_team_id, row.away_team_id, row.match_date)
+        if len(earlier) == 0:
+            assert pd.isna(row.h2h_ppg_last_3)
+        else:
+            assert math.isclose(row.h2h_ppg_last_3, earlier["points"].mean(), abs_tol=1e-9)
+
+
 # ------------------------------------------------------------------------------- test 2
-def _render_form_sql(table_name: str) -> str:
-    """Render the dbt model with jinja2, pointing ref('silver_team_matches') at a plain table."""
+def _render_form_sql(table_name: str, model_file: str = "int_team_form.sql") -> str:
+    """Render a dbt model with jinja2, pointing ref('silver_team_matches') at a plain table."""
 
     def ref(name: str) -> str:
         assert name == "silver_team_matches", f"unexpected ref {name}"
         return table_name
 
-    return jinja2.Template(FORM_MODEL.read_text(encoding="utf-8")).render(
+    return jinja2.Template((GOLD_MODELS / model_file).read_text(encoding="utf-8")).render(
         ref=ref, config=lambda **kwargs: ""
     )
 
 
+@pytest.mark.parametrize("model_file", FEATURE_MODELS)
 @pytest.mark.parametrize("cut_date", ["2005-03-01", "2013-12-15", "2022-01-20"])
-def test_adding_future_matches_does_not_change_past_features(paths, cut_date):
+def test_adding_future_matches_does_not_change_past_features(paths, cut_date, model_file):
     tm_path, _ = paths
     con = duckdb.connect()
     try:
@@ -102,11 +124,22 @@ def test_adding_future_matches_does_not_change_past_features(paths, cut_date):
             f"create table tm_cut as select * from tm_full where match_date < DATE '{cut_date}'"
         )
 
-        full = con.execute(_render_form_sql("tm_full")).df()
-        cut = con.execute(_render_form_sql("tm_cut")).df()
+        full = con.execute(_render_form_sql("tm_full", model_file)).df()
+        cut = con.execute(_render_form_sql("tm_cut", model_file)).df()
     finally:
         con.close()
 
+    # int_h2h has no date column: join it back to the dates through silver_team_matches
+    if "match_date" not in full.columns:
+        con = duckdb.connect()
+        try:
+            dates = con.execute(
+                "select match_id, team_id, match_date from read_parquet(?)", [str(tm_path)]
+            ).df()
+        finally:
+            con.close()
+        full = full.merge(dates, on=["match_id", "team_id"])
+        cut = cut.merge(dates, on=["match_id", "team_id"])
     past = full[full["match_date"] < pd.Timestamp(cut_date)]
     assert len(cut) > 1000 and len(cut) == len(past) < len(full)  # the cut really removed future
 

@@ -20,3 +20,14 @@
 - [ ] Run in DuckDB: `select count(*) from read_parquet('data/lake/gold/fct_match_features.parquet')` = 8028
 - [ ] Open `fct_match_features` for one match and recompute `h_ppg_10` by hand from the last 10 matches
 - [ ] Write in your journal: why the window ends at `1 preceding`; why Elo is a Python function
+
+# Week 2 checklist, part 3 (marts, quality report, lineage)
+
+- [ ] `make dbt` green and **no** `MissingArgumentsPropertyInGenericTestDeprecation` warning
+- [ ] `make format && make lint` clean (the new files were not run through ruff yet)
+- [ ] `make test-data` green: `test_known_tables.py` (Leverkusen 2023-24, Bayern 2012-13, ...)
+- [ ] Compare the 2023-24 and 2012-13 final tables with an INDEPENDENT source (official site)
+- [ ] `make quality-report`, then read `docs/quality_report.md`
+- [ ] `make dbt-docs`: open the lineage graph, take a screenshot into `docs/lineage.png`
+- [ ] In DuckDB, query `mart_unbeaten_streaks` and explain the gaps-and-islands idea in your journal
+- [ ] Count: `select count(*) from read_parquet('data/lake/gold/fct_match_features.parquet')` = 8028

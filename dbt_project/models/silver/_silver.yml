@@ -19,14 +19,16 @@ models:
         data_tests:
           - not_null
           - relationships:
-              to: ref('silver_teams')
-              field: team_id
+              arguments:
+                to: ref('silver_teams')
+                field: team_id
       - name: away_team_id
         data_tests:
           - not_null
           - relationships:
-              to: ref('silver_teams')
-              field: team_id
+              arguments:
+                to: ref('silver_teams')
+                field: team_id
       - name: home_goals
         data_tests: [not_null]
       - name: away_goals
@@ -35,7 +37,8 @@ models:
         data_tests:
           - not_null
           - accepted_values:
-              values: ["H", "D", "A"]
+              arguments:
+                values: ["H", "D", "A"]
 
   - name: silver_team_matches
     description: Two rows per match (one per team's point of view). Grain (match_id, team_id).
@@ -44,21 +47,24 @@ models:
         data_tests:
           - not_null
           - relationships:
-              to: ref('silver_matches')
-              field: match_id
+              arguments:
+                to: ref('silver_matches')
+                field: match_id
       - name: team_id
         data_tests:
           - not_null
           - relationships:
-              to: ref('silver_teams')
-              field: team_id
+              arguments:
+                to: ref('silver_teams')
+                field: team_id
       - name: is_home
         data_tests: [not_null]
       - name: points
         data_tests:
           - not_null
           - accepted_values:
-              values: [0, 1, 3]
+              arguments:
+                values: [0, 1, 3]
 
   - name: silver_match_odds
     description: >
@@ -69,12 +75,14 @@ models:
         data_tests:
           - not_null
           - relationships:
-              to: ref('silver_matches')
-              field: match_id
+              arguments:
+                to: ref('silver_matches')
+                field: match_id
       - name: bookmaker
         data_tests:
           - accepted_values:
-              values: ["bet365", "pinnacle", "market_avg"]
+              arguments:
+                values: ["bet365", "pinnacle", "market_avg"]
       - name: odds_home
         data_tests: [not_null]
       - name: odds_draw

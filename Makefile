@@ -1,5 +1,5 @@
 .PHONY: help install bronze profile test test-data lint format all-week1 clean-cache \
-	dbt-dirs dbt dbt-seed dbt-test dbt-docs validate all-week2
+	dbt-dirs dbt dbt-seed dbt-test dbt-docs validate quality-report all-week2
 
 PYTHON ?= python
 DBT ?= dbt
@@ -18,7 +18,8 @@ help:
 	@echo "make dbt-test   - only the dbt tests"
 	@echo "make dbt-docs   - generate dbt docs and open the lineage graph"
 	@echo "make validate   - Pandera checks on Bronze and Silver"
-	@echo "make all-week2  - dbt + validate + test-data"
+	@echo "make quality-report - docs/quality_report.md + dbt test history (run after make dbt)"
+	@echo "make all-week2  - dbt + validate + quality-report + test-data"
 
 install:
 	$(PYTHON) -m pip install -e ".[dev]"
@@ -69,4 +70,7 @@ dbt-docs:
 validate:
 	$(PYTHON) -m sportslakehouse.quality.validate
 
-all-week2: dbt validate test-data
+quality-report:
+	$(PYTHON) -m sportslakehouse.quality.dbt_results
+
+all-week2: dbt validate quality-report test-data

@@ -38,14 +38,57 @@ models:
           - unique
           - not_null
           - relationships:
-              to: ref('silver_matches')
-              field: match_id
+              arguments:
+                to: ref('silver_matches')
+                field: match_id
       - name: result
         data_tests:
           - not_null
           - accepted_values:
-              values: ["H", "D", "A"]
+              arguments:
+                values: ["H", "D", "A"]
       - name: h_elo
         data_tests: [not_null]
       - name: a_elo
         data_tests: [not_null]
+
+  - name: int_h2h
+    description: >
+      Points of a team in its last up to 3 meetings with the same opponent, before each match
+      (window ends at 1 PRECEDING). Grain (match_id, team_id).
+    columns:
+      - name: h2h_n
+        data_tests: [not_null]
+
+  - name: mart_standings
+    description: >
+      League table after each team's k-th match of a season. The row with matches_played = 34
+      of a completed season is the final table. Grain (season, matches_played, team_id).
+    columns:
+      - name: team_id
+        data_tests: [not_null]
+      - name: rank
+        data_tests: [not_null]
+
+  - name: mart_team_form
+    description: >
+      Form of a team as of the end of each match day, INCLUDING that day's match (for dashboard
+      and API only, never for ML features). Grain (team_id, match_date).
+    columns:
+      - name: team_id
+        data_tests: [not_null]
+      - name: last_5
+        description: Last five results oldest to newest, e.g. WWDLW.
+
+  - name: mart_unbeaten_streaks
+    description: Longest unbeaten run (wins + draws) per team and season (gaps and islands).
+    columns:
+      - name: streak_length
+        data_tests: [not_null]
+
+  - name: mart_home_away_by_season
+    description: Result shares and average goals per season (home advantage over time).
+    columns:
+      - name: season
+        data_tests: [unique, not_null]
+
